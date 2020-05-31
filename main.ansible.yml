@@ -1,0 +1,95 @@
+---
+- name: Install required packages / tools
+  hosts: all
+  vars:
+    configure_docker: true
+
+    # Kubernetes
+    configure_k3s: false
+    configure_microk8s: false
+    configure_helm: false
+
+    configure_terraform: false
+    configure_tailscale: false
+    configure_netplan: false
+
+  tasks:
+    - name: Configure Docker
+      ansible.builtin.include_role:
+        name: geerlingguy.docker
+      vars:
+        ansible_become: true
+        docker_users:
+          - "{{ ansible_env.USER }}"
+      when: configure_docker | default(false) | bool
+
+    - name: Configure K3s
+      ansible.builtin.include_role:
+        name: xanmanning.k3s
+      vars:
+        k3s_become: true
+        # k3s_server:
+          # docker: true
+          # disable:
+          #   - coredns
+          #   - traefik
+      when: configure_k3s | default(false) | bool
+
+    - name: Configure MicroK8s
+      ansible.builtin.include_role:
+        name: racqspace.microk8s
+      vars:
+        ansible_become: true
+        microk8s_plugins:
+          # https://github.com/racqspace/ansible-role-microk8s/blob/main/defaults/main.yml
+          dashboard: true
+        microk8s_registry_size: 20Gi
+        microk8s_users:
+          - "{{ ansible_env.USER }}"
+      when: configure_microk8s | default(false) | bool
+
+    - name: Configure Helm
+      ansible.builtin.include_role:
+        name: andrewrothstein.kubernetes-helm
+      when: configure_helm | default(false) | bool
+
+    - name: Configure Terraform
+      ansible.builtin.include_role:
+        name: andrewrothstein.terraform
+      when: configure_terraform | default(false) | bool
+
+    - name: Configure Tailscale
+      ansible.builtin.include_role:
+        name: artis3n.tailscale
+      vars:
+        tailscale_authkey: ""
+        tailscale_up_skip: true
+        # tailscale_args: "--accept-routes=false --advertise-routes={{ subnet_blocks  |  join(',') }}"
+      when: configure_tailscale | default(false) | bool
+
+    - name: Configure Netplan
+      ansible.builtin.include_role:
+        name: mrlesmithjr.netplan
+      vars:
+        ansible_become: true
+        netplan_enabled: true
+        netplan_config_file: /etc/netplan/01-network-manager-all.yaml
+        netplan_renderer: NetworkManager
+        netplan_configuration: '{
+          "network": {
+            "ethernets": {
+              "{{ ansible_default_ipv4.interface }}": {
+                "dhcp4": true
+              }
+            },
+            "bridges": {
+              "br0": {
+                "dhcp4": true,
+                "interfaces": [
+                  "{{ ansible_default_ipv4.interface }}"
+                ]
+              }
+            }
+          }
+        }'
+      when: configure_netplan | default(false) | bool

@@ -1,0 +1,1 @@
+hostname ansible_user=my_user ansible_password=my_password ansible_become_password=my_password ansible_ssh_common_args='-o StrictHostKeyChecking=no'

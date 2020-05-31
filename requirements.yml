@@ -1,0 +1,8 @@
+---
+- name: geerlingguy.docker
+- name: xanmanning.k3s
+- name: racqspace.microk8s
+- name: andrewrothstein.kubernetes-helm
+- name: andrewrothstein.terraform
+- name: artis3n.tailscale
+- name: mrlesmithjr.netplan
