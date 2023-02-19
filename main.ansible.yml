@@ -25,17 +25,21 @@
           - "{{ ansible_env.USER }}"
 
     - name: Configure Docker proxies
-      when: configure_docker | default(false) | bool and (ansible_env.HTTP_PROXY is defined or ansible_env.HTTPS_PROXY is defined or ansible_env.NO_PROXY is defined)
+      when: >
+        configure_docker | default(false) | bool and
+        (ansible_env.HTTP_PROXY is defined or ansible_env.HTTPS_PROXY is defined or ansible_env.NO_PROXY is defined)
       block:
         - name: Create systemd directory for Docker service
           ansible.builtin.file:
             path: /etc/systemd/system/docker.service.d
+            mode: 0755
             state: directory
           become: true
 
         - name: Set Docker daemon proxies
           ansible.builtin.template:
             src: ./templates/http-proxy.conf.j2
+            mode: 0644
             dest: /etc/systemd/system/docker.service.d/http-proxy.conf
             backup: true
           notify: "Restart Docker service"
@@ -44,12 +48,14 @@
         - name: Create directory for Docker client
           ansible.builtin.file:
             path: "{{ ansible_user_dir }}/.docker"
+            mode: 0755
             state: directory
 
         - name: Set Docker daemon proxies
           ansible.builtin.template:
             src: ./templates/config.json.j2
             dest: "{{ ansible_user_dir }}/.docker/config.json"
+            mode: 0644
             backup: true
           notify: "Restart Docker service"
 
@@ -101,6 +107,7 @@
         - name: Create pool directory
           ansible.builtin.file:
             path: /var/lib/libvirt/images
+            mode: 0755
             state: directory
           become: true
 
