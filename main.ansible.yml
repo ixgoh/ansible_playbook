@@ -38,7 +38,7 @@
 
         - name: Set Docker daemon proxies
           ansible.builtin.template:
-            src: ./templates/http-proxy.conf.j2
+            src: ./templates/docker/http-proxy.conf.j2
             mode: 0644
             dest: /etc/systemd/system/docker.service.d/http-proxy.conf
             backup: true
@@ -53,7 +53,7 @@
 
         - name: Set Docker daemon proxies
           ansible.builtin.template:
-            src: ./templates/config.json.j2
+            src: ./templates/docker/config.json.j2
             dest: "{{ ansible_user_dir }}/.docker/config.json"
             mode: 0644
             backup: true
@@ -182,3 +182,17 @@
             }
           }
         }'
+
+  handlers:
+    - name: Restart Docker service
+      ansible.builtin.systemd:
+        name: docker
+        state: restarted
+        daemon_reload: true
+      become: true
+
+    - name: Restart libvirtd service
+      ansible.builtin.systemd:
+        name: libvirtd
+        state: restarted
+      become: true
