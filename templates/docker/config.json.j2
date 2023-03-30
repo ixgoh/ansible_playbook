@@ -1,0 +1,9 @@
+{
+  "proxies": {
+    "default": {
+      "httpProxy": "{{ ansible_env.HTTP_PROXY }}",
+      "httpsProxy": "{{ ansible_env.HTTPS_PROXY }}",
+      "noProxy": "{{ ansible_env.NO_PROXY }}"
+    }
+  }
+}

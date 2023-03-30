@@ -9,21 +9,58 @@
     configure_microk8s: false
     configure_helm: false
 
+    configure_kvm: false
     configure_terraform: false
     configure_tailscale: false
     configure_netplan: false
 
   tasks:
     - name: Configure Docker
+      when: configure_docker | default(false) | bool
       ansible.builtin.include_role:
         name: geerlingguy.docker
       vars:
         ansible_become: true
         docker_users:
           - "{{ ansible_env.USER }}"
-      when: configure_docker | default(false) | bool
+
+    - name: Configure Docker proxies
+      when: >
+        configure_docker | default(false) | bool and
+        (ansible_env.HTTP_PROXY is defined or ansible_env.HTTPS_PROXY is defined or ansible_env.NO_PROXY is defined)
+      block:
+        - name: Create systemd directory for Docker service
+          ansible.builtin.file:
+            path: /etc/systemd/system/docker.service.d
+            mode: 0755
+            state: directory
+          become: true
+
+        - name: Set Docker daemon proxies
+          ansible.builtin.template:
+            src: ./templates/docker/http-proxy.conf.j2
+            mode: 0644
+            dest: /etc/systemd/system/docker.service.d/http-proxy.conf
+            backup: true
+          notify: "Restart Docker service"
+          become: true
+
+        - name: Create directory for Docker client
+          ansible.builtin.file:
+            path: "{{ ansible_user_dir }}/.docker"
+            mode: 0755
+            state: directory
+
+        - name: Set Docker daemon proxies
+          ansible.builtin.template:
+            src: ./templates/docker/config.json.j2
+            dest: "{{ ansible_user_dir }}/.docker/config.json"
+            mode: 0644
+            backup: true
+          notify: "Restart Docker service"
 
     - name: Configure K3s
+      when: configure_k3s | default(false) | bool
       ansible.builtin.include_role:
         name: xanmanning.k3s
       vars:
@@ -33,9 +70,9 @@
           # disable:
           #   - coredns
           #   - traefik
-      when: configure_k3s | default(false) | bool
 
     - name: Configure MicroK8s
+      when: configure_microk8s | default(false) | bool
       ansible.builtin.include_role:
         name: racqspace.microk8s
       vars:
@@ -46,28 +83,82 @@
         microk8s_registry_size: 20Gi
         microk8s_users:
           - "{{ ansible_env.USER }}"
-      when: configure_microk8s | default(false) | bool
 
     - name: Configure Helm
+      when: configure_helm | default(false) | bool
       ansible.builtin.include_role:
         name: andrewrothstein.kubernetes-helm
-      when: configure_helm | default(false) | bool
+
+    - name: Configure KVM
+      when: configure_kvm | default(false) | bool
+      block:
+        - name: Install required system packages
+          ansible.builtin.apt:
+            pkg:
+              - virt-manager
+              - qemu-kvm
+              - libguestfs-tools
+              - libosinfo-bin
+              - bridge-utils
+              - genisoimage
+            state: present
+            update_cache: true
+          become: true
+
+        - name: Create pool directory
+          ansible.builtin.file:
+            path: /var/lib/libvirt/images
+            mode: 0755
+            state: directory
+          become: true
+
+        - name: Create default pool
+          ansible.builtin.command:
+            cmd: virsh pool-define-as --name default --type dir --target /var/lib/libvirt/images
+          register: pool_define
+          changed_when: "'Pool default defined' in pool_define.stdout"
+          become: true
+
+        - name: Create default pool
+          ansible.builtin.command:
+            cmd: virsh pool-start default
+          register: pool_start
+          changed_when: "'Pool default started' in pool_start.stdout"
+          become: true
+
+        - name: Create default pool
+          ansible.builtin.command:
+            cmd: virsh pool-autostart default
+          register: pool_autostart
+          changed_when: "'Pool default marked as autostarted' in pool_autostart.stdout"
+          become: true
+
+        - name: Create default pool
+          ansible.builtin.command:
+            cmd: sed -i "s/#security_driver = \"selinux\"/security_driver = \"none\"/g" /etc/libvirt/qemu.conf
+          become: true
+
+        - name: Restart libvirtd service
+          ansible.builtin.debug:
+            msg: "Run 'newgrp libvirt' to take effect."
+          notify: "Restart libvirtd service"
 
     - name: Configure Terraform
+      when: configure_terraform | default(false) | bool
       ansible.builtin.include_role:
         name: andrewrothstein.terraform
-      when: configure_terraform | default(false) | bool
 
     - name: Configure Tailscale
+      when: configure_tailscale | default(false) | bool
       ansible.builtin.include_role:
         name: artis3n.tailscale
       vars:
         tailscale_authkey: ""
         tailscale_up_skip: true
         # tailscale_args: "--accept-routes=false --advertise-routes={{ subnet_blocks  |  join(',') }}"
-      when: configure_tailscale | default(false) | bool
 
     - name: Configure Netplan
+      when: configure_netplan | default(false) | bool
       ansible.builtin.include_role:
         name: mrlesmithjr.netplan
       vars:
@@ -92,4 +183,17 @@
             }
           }
         }'
-      when: configure_netplan | default(false) | bool
+
+  handlers:
+    - name: Restart Docker service
+      ansible.builtin.systemd:
+        name: docker
+        state: restarted
+        daemon_reload: true
+      become: true
+
+    - name: Restart libvirtd service
+      ansible.builtin.systemd:
+        name: libvirtd
+        state: restarted
+      become: true
