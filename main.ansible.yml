@@ -65,12 +65,13 @@
         name: xanmanning.k3s
       vars:
         k3s_become: true
-        # k3s_server:
+        k3s_server:
           # docker: true
           # disable:
           #   - coredns
           #   - traefik
-
+          write-kubeconfig-mode: '0644'
+ 
     - name: Configure MicroK8s
       when: configure_microk8s | default(false) | bool
       ansible.builtin.include_role:
