@@ -194,10 +194,10 @@
         users:
           - username: "{{ ansible_user_id }}"
             visual_studio_code_extensions:
-              - ms-azuretools.vscode-docker
+              # - ms-azuretools.vscode-docker
               - ms-python.python
-              - ms-vscode-remote.remote-containers
-              - ms-vscode-remote.remote-ssh
+              # - ms-vscode-remote.remote-containers
+              # - ms-vscode-remote.remote-ssh
               - visualstudioexptteam.vscodeintellicode
 
   handlers:
