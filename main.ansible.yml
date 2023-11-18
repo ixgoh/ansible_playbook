@@ -73,7 +73,7 @@
           #   - coredns
           #   - traefik
           write-kubeconfig-mode: '0644'
- 
+
     - name: Configure MicroK8s
       when: configure_microk8s | default(false) | bool
       ansible.builtin.include_role:
@@ -122,21 +122,21 @@
           changed_when: "'Pool default defined' in pool_define.stdout"
           become: true
 
-        - name: Create default pool
+        - name: Start default pool
           ansible.builtin.command:
             cmd: virsh pool-start default
           register: pool_start
           changed_when: "'Pool default started' in pool_start.stdout"
           become: true
 
-        - name: Create default pool
+        - name: Mark default pool to auto-start
           ansible.builtin.command:
             cmd: virsh pool-autostart default
           register: pool_autostart
           changed_when: "'Pool default marked as autostarted' in pool_autostart.stdout"
           become: true
 
-        - name: Create default pool
+        - name: Disable security driver
           ansible.builtin.command:
             cmd: sed -i "s/#security_driver = \"selinux\"/security_driver = \"none\"/g" /etc/libvirt/qemu.conf
           become: true
