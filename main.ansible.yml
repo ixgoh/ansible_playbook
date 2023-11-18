@@ -12,7 +12,7 @@
     configure_kvm: false
     configure_terraform: false
     configure_tailscale: false
-    configure_netplan: false
+    # configure_netplan: false
     configure_vscode: false
     configure_flatpak: false
 
@@ -160,32 +160,32 @@
         tailscale_up_skip: true
         # tailscale_args: "--accept-routes=false --advertise-routes={{ subnet_blocks  |  join(',') }}"
 
-    - name: Configure Netplan
-      when: configure_netplan | default(false) | bool
-      ansible.builtin.include_role:
-        name: mrlesmithjr.netplan
-      vars:
-        ansible_become: true
-        netplan_enabled: true
-        netplan_config_file: /etc/netplan/01-network-manager-all.yaml
-        netplan_renderer: NetworkManager
-        netplan_configuration: '{
-          "network": {
-            "ethernets": {
-              "{{ ansible_default_ipv4.interface }}": {
-                "dhcp4": true
-              }
-            },
-            "bridges": {
-              "br0": {
-                "dhcp4": true,
-                "interfaces": [
-                  "{{ ansible_default_ipv4.interface }}"
-                ]
-              }
-            }
-          }
-        }'
+    # - name: Configure Netplan
+    #   when: configure_netplan | default(false) | bool
+    #   ansible.builtin.include_role:
+    #     name: mrlesmithjr.netplan
+    #   vars:
+    #     ansible_become: true
+    #     netplan_enabled: true
+    #     netplan_config_file: /etc/netplan/01-network-manager-all.yaml
+    #     netplan_renderer: NetworkManager
+    #     netplan_configuration: '{
+    #       "network": {
+    #         "ethernets": {
+    #           "{{ ansible_default_ipv4.interface }}": {
+    #             "dhcp4": true
+    #           }
+    #         },
+    #         "bridges": {
+    #           "br0": {
+    #             "dhcp4": true,
+    #             "interfaces": [
+    #               "{{ ansible_default_ipv4.interface }}"
+    #             ]
+    #           }
+    #         }
+    #       }
+    #     }'
 
     - name: Configure Visual Studio Code
       when: configure_vscode | default(false) | bool
