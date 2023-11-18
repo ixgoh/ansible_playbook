@@ -34,14 +34,14 @@
         - name: Create systemd directory for Docker service
           ansible.builtin.file:
             path: /etc/systemd/system/docker.service.d
-            mode: 0755
+            mode: '0755'
             state: directory
           become: true
 
         - name: Set Docker daemon proxies
           ansible.builtin.template:
             src: ./templates/docker/http-proxy.conf.j2
-            mode: 0644
+            mode: '0644'
             dest: /etc/systemd/system/docker.service.d/http-proxy.conf
             backup: true
           notify: "Restart Docker service"
@@ -50,14 +50,14 @@
         - name: Create directory for Docker client
           ansible.builtin.file:
             path: "{{ ansible_user_dir }}/.docker"
-            mode: 0755
+            mode: '0755'
             state: directory
 
         - name: Set Docker daemon proxies
           ansible.builtin.template:
             src: ./templates/docker/config.json.j2
             dest: "{{ ansible_user_dir }}/.docker/config.json"
-            mode: 0644
+            mode: '0644'
             backup: true
           notify: "Restart Docker service"
 
