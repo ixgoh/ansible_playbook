@@ -2,7 +2,8 @@
 - name: Install required packages / tools
   hosts: all
   vars:
-    configure_docker: true
+    configure_cpu_governor: "default"
+    configure_docker: false
 
     # Kubernetes
     configure_k3s: false
@@ -17,6 +18,26 @@
     configure_flatpak: false
 
   tasks:
+    - name: Configure CPU Governor
+      when: configure_cpu_governor | default("default") != "default"
+      block:
+        - name: Get current CPU Governor
+          ansible.builtin.shell:
+            cmd: cat /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor
+            executable: /bin/bash
+          register: current_governor
+          changed_when: false
+          become: true
+
+        - name: Set CPU Governor
+          ansible.builtin.shell:
+            cmd: |
+              set -o pipefail
+              echo {{ configure_cpu_governor }} | tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor
+            executable: /bin/bash
+          changed_when: configure_cpu_governor not in current_governor.stdout_lines
+          become: true
+
     - name: Configure Docker
       when: configure_docker | default(false) | bool
       ansible.builtin.include_role:
@@ -111,7 +132,7 @@
         - name: Create pool directory
           ansible.builtin.file:
             path: /var/lib/libvirt/images
-            mode: 0755
+            mode: '0755'
             state: directory
           become: true
 
