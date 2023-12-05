@@ -2,7 +2,8 @@
 - name: Install required packages / tools
   hosts: all
   vars:
-    configure_docker: true
+    configure_cpu_governor: "default"
+    configure_docker: false
 
     # Kubernetes
     configure_k3s: false
@@ -12,11 +13,31 @@
     configure_kvm: false
     configure_terraform: false
     configure_tailscale: false
-    configure_netplan: false
+    # configure_netplan: false
     configure_vscode: false
     configure_flatpak: false
 
   tasks:
+    - name: Configure CPU Governor
+      when: configure_cpu_governor | default("default") != "default"
+      block:
+        - name: Get current CPU Governor
+          ansible.builtin.shell:
+            cmd: cat /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor
+            executable: /bin/bash
+          register: current_governor
+          changed_when: false
+          become: true
+
+        - name: Set CPU Governor
+          ansible.builtin.shell:
+            cmd: |
+              set -o pipefail
+              echo {{ configure_cpu_governor }} | tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor
+            executable: /bin/bash
+          changed_when: configure_cpu_governor not in current_governor.stdout_lines
+          become: true
+
     - name: Configure Docker
       when: configure_docker | default(false) | bool
       ansible.builtin.include_role:
@@ -34,14 +55,14 @@
         - name: Create systemd directory for Docker service
           ansible.builtin.file:
             path: /etc/systemd/system/docker.service.d
-            mode: 0755
+            mode: '0755'
             state: directory
           become: true
 
         - name: Set Docker daemon proxies
           ansible.builtin.template:
             src: ./templates/docker/http-proxy.conf.j2
-            mode: 0644
+            mode: '0644'
             dest: /etc/systemd/system/docker.service.d/http-proxy.conf
             backup: true
           notify: "Restart Docker service"
@@ -50,14 +71,14 @@
         - name: Create directory for Docker client
           ansible.builtin.file:
             path: "{{ ansible_user_dir }}/.docker"
-            mode: 0755
+            mode: '0755'
             state: directory
 
         - name: Set Docker daemon proxies
           ansible.builtin.template:
             src: ./templates/docker/config.json.j2
             dest: "{{ ansible_user_dir }}/.docker/config.json"
-            mode: 0644
+            mode: '0644'
             backup: true
           notify: "Restart Docker service"
 
@@ -73,7 +94,7 @@
           #   - coredns
           #   - traefik
           write-kubeconfig-mode: '0644'
- 
+
     - name: Configure MicroK8s
       when: configure_microk8s | default(false) | bool
       ansible.builtin.include_role:
@@ -111,7 +132,7 @@
         - name: Create pool directory
           ansible.builtin.file:
             path: /var/lib/libvirt/images
-            mode: 0755
+            mode: '0755'
             state: directory
           become: true
 
@@ -122,21 +143,21 @@
           changed_when: "'Pool default defined' in pool_define.stdout"
           become: true
 
-        - name: Create default pool
+        - name: Start default pool
           ansible.builtin.command:
             cmd: virsh pool-start default
           register: pool_start
           changed_when: "'Pool default started' in pool_start.stdout"
           become: true
 
-        - name: Create default pool
+        - name: Mark default pool to auto-start
           ansible.builtin.command:
             cmd: virsh pool-autostart default
           register: pool_autostart
           changed_when: "'Pool default marked as autostarted' in pool_autostart.stdout"
           become: true
 
-        - name: Create default pool
+        - name: Disable security driver
           ansible.builtin.command:
             cmd: sed -i "s/#security_driver = \"selinux\"/security_driver = \"none\"/g" /etc/libvirt/qemu.conf
           become: true
@@ -160,32 +181,32 @@
         tailscale_up_skip: true
         # tailscale_args: "--accept-routes=false --advertise-routes={{ subnet_blocks  |  join(',') }}"
 
-    - name: Configure Netplan
-      when: configure_netplan | default(false) | bool
-      ansible.builtin.include_role:
-        name: mrlesmithjr.netplan
-      vars:
-        ansible_become: true
-        netplan_enabled: true
-        netplan_config_file: /etc/netplan/01-network-manager-all.yaml
-        netplan_renderer: NetworkManager
-        netplan_configuration: '{
-          "network": {
-            "ethernets": {
-              "{{ ansible_default_ipv4.interface }}": {
-                "dhcp4": true
-              }
-            },
-            "bridges": {
-              "br0": {
-                "dhcp4": true,
-                "interfaces": [
-                  "{{ ansible_default_ipv4.interface }}"
-                ]
-              }
-            }
-          }
-        }'
+    # - name: Configure Netplan
+    #   when: configure_netplan | default(false) | bool
+    #   ansible.builtin.include_role:
+    #     name: mrlesmithjr.netplan
+    #   vars:
+    #     ansible_become: true
+    #     netplan_enabled: true
+    #     netplan_config_file: /etc/netplan/01-network-manager-all.yaml
+    #     netplan_renderer: NetworkManager
+    #     netplan_configuration: '{
+    #       "network": {
+    #         "ethernets": {
+    #           "{{ ansible_default_ipv4.interface }}": {
+    #             "dhcp4": true
+    #           }
+    #         },
+    #         "bridges": {
+    #           "br0": {
+    #             "dhcp4": true,
+    #             "interfaces": [
+    #               "{{ ansible_default_ipv4.interface }}"
+    #             ]
+    #           }
+    #         }
+    #       }
+    #     }'
 
     - name: Configure Visual Studio Code
       when: configure_vscode | default(false) | bool
