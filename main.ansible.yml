@@ -121,6 +121,8 @@
             pkg:
               - virt-manager
               - qemu-kvm
+              - dconf
+              - dbus-x11
               - libguestfs-tools
               - libosinfo-bin
               - bridge-utils
