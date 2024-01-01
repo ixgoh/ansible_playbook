@@ -1,9 +1,15 @@
 {
   "proxies": {
     "default": {
-      "httpProxy": "{{ ansible_env.HTTP_PROXY }}",
-      "httpsProxy": "{{ ansible_env.HTTPS_PROXY }}",
-      "noProxy": "{{ ansible_env.NO_PROXY }}"
+      {% if ansible_env.HTTP_PROXY is defined or ansible_env.http_proxy is defined %}
+      "httpProxy": "{{ ansible_env.HTTP_PROXY if ansible_env.HTTP_PROXY is defined else ansible_env.http_proxy }}",
+      {% endif %}
+      {% if ansible_env.HTTPS_PROXY is defined or ansible_env.https_proxy is defined %}
+      "httpsProxy": "{{ ansible_env.HTTPS_PROXY if ansible_env.HTTPS_PROXY is defined else ansible_env.https_proxy }}",      
+      {% endif %}
+      {% if ansible_env.NO_PROXY is defined or ansible_env.no_proxy is defined %}
+      "noProxy": "{{ ansible_env.NO_PROXY if ansible_env.NO_PROXY is defined else ansible_env.no_proxy }}"
+      {% endif %}
     }
   }
 }

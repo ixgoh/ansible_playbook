@@ -1,0 +1,12 @@
+network:
+  interface: {{ ansible_default_ipv4.address }}
+  websocket_port: 5910
+  udp:
+    public_ip: {{ ansible_default_ipv4.address }}
+
+{% if configure_kasm[2].gpu %}
+desktop:
+  gpu:
+    hw3d: true
+    drinode: {{ configure_kasm[2].renderNode }}
+{% endif %}

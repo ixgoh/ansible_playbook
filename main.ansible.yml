@@ -3,7 +3,7 @@
   hosts: all
   vars:
     configure_cpu_governor: "default"
-    configure_docker: false
+    configure_docker: true
 
     # Kubernetes
     configure_k3s: false
@@ -11,6 +11,7 @@
     configure_helm: false
 
     configure_kvm: false
+    configure_kasm: [false, "1.2.0", {"gpu": true, "renderNode": "/dev/dri/renderD128"}]
     configure_terraform: false
     configure_tailscale: false
     # configure_netplan: false
@@ -50,7 +51,8 @@
     - name: Configure Docker proxies
       when: >
         configure_docker | default(false) | bool and
-        (ansible_env.HTTP_PROXY is defined or ansible_env.HTTPS_PROXY is defined or ansible_env.NO_PROXY is defined)
+        (ansible_env.HTTP_PROXY is defined or ansible_env.HTTPS_PROXY is defined or ansible_env.NO_PROXY is defined) or
+        (ansible_env.http_proxy is defined or ansible_env.https_proxy is defined or ansible_env.no_proxy is defined)
       block:
         - name: Create systemd directory for Docker service
           ansible.builtin.file:
@@ -121,7 +123,6 @@
             pkg:
               - virt-manager
               - qemu-kvm
-              - dconf
               - dbus-x11
               - libguestfs-tools
               - libosinfo-bin
@@ -168,6 +169,47 @@
           ansible.builtin.debug:
             msg: "Run 'newgrp libvirt' to take effect."
           notify: "Restart libvirtd service"
+
+    - name: Configure KasmVNC
+      when: configure_kasm[0] | default(false) | bool
+      block:
+        - name: Install KasmVNC dependencies
+          ansible.builtin.apt:
+            pkg:
+              - libswitch-perl
+              - libyaml-tiny-perl
+              - libhash-merge-simple-perl
+              - liblist-moreutils-perl
+              - libdatetime-timezone-perl
+              - dbus-x11
+            update_cache: true
+          become: true
+
+        - name: Install KasmVNC
+          ansible.builtin.apt:
+            deb: "https://github.com/kasmtech/KasmVNC/releases/download/v{{ configure_kasm[1] }}/kasmvncserver_jammy_{{ configure_kasm[1] }}_amd64.deb"
+          become: true`
+
+        - name: Ensure user are added to the ssl-cert group.
+          ansible.builtin.user:
+            name: user
+            groups: ssl-cert
+            append: true
+          become: true
+
+        - name: Create configuration directory for KasmVNC service
+          ansible.builtin.file:
+            path: "{{ ansible_user_dir }}/.vnc"
+            mode: '0755'
+            state: directory
+
+        - name: Set KasmVNC configuration
+          ansible.builtin.template:
+            src: ./templates/kasmvnc/kasmvnc.yaml.j2
+            mode: '0644'
+            dest: "{{ ansible_user_dir }}/.vnc/kasmvnc.yaml"
+            backup: true
+          become: true
 
     - name: Configure Terraform
       when: configure_terraform | default(false) | bool
