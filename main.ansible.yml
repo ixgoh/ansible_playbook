@@ -11,7 +11,7 @@
     configure_helm: false
 
     configure_kvm: false
-    configure_kasm: [false, "1.2.0", {"gpu": true, "renderNode": "/dev/dri/renderD128"}]
+    configure_kasm: [false, "1.2.0", {"gpu": false, "renderNode": "/dev/dri/renderD128"}]
     configure_terraform: false
     configure_tailscale: false
     # configure_netplan: false
@@ -188,7 +188,7 @@
         - name: Install KasmVNC
           ansible.builtin.apt:
             deb: "https://github.com/kasmtech/KasmVNC/releases/download/v{{ configure_kasm[1] }}/kasmvncserver_jammy_{{ configure_kasm[1] }}_amd64.deb"
-          become: true`
+          become: true
 
         - name: Ensure user are added to the ssl-cert group.
           ansible.builtin.user:
